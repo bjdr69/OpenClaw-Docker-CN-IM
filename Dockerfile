@@ -52,7 +52,7 @@ RUN apt-get update && \
     ln -sf /usr/local/python312/bin/python3 /usr/local/bin/python && \
     # 移除 EXTERNALLY-MANAGED 限制并安装 websockify
     find /usr/local/python312 -name EXTERNALLY-MANAGED -delete && \
-    /usr/local/bin/python3 -m pip install --no-cache-dir websockify && \
+    /usr/local/bin/python3 -m pip install --no-cache-dir --break-system-packages websockify && \
     npm install -g @tobilu/qmd@1.1.6 && \
     # 安装 Playwright 浏览器依赖
     npx playwright install chromium --with-deps && \
