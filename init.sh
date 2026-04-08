@@ -773,21 +773,72 @@ def normalize_telegram_config(channels):
     if streaming is None:
         return
 
-    # 检测旧版格式：streaming 是字符串而非对象
+    migrated = False
+
+    # 旧版格式：streaming 是字符串，迁移为新版嵌套对象
     if isinstance(streaming, str):
         print('检测到 Telegram 旧版 streaming 配置格式，正在执行自动迁移...')
-        mode = streaming
+        mode = streaming if streaming in ('off', 'partial', 'block', 'progress') else 'partial'
         telegram['streaming'] = {
             'mode': mode,
-            'chunkMode': 'default',
-            'preview': {
-                'chunk': True
-            },
-            'block': {
-                'enabled': False,
-                'coalesce': True
-            }
+            'chunkMode': 'length',
         }
+        print('✅ Telegram 配置已迁移到新版嵌套结构')
+        return
+
+    if not isinstance(streaming, dict):
+        return
+
+    normalized = dict(streaming)
+
+    chunk_mode = normalized.get('chunkMode')
+    if chunk_mode == 'default':
+        normalized['chunkMode'] = 'length'
+        migrated = True
+
+    preview = normalized.get('preview')
+    if isinstance(preview, dict):
+        preview = dict(preview)
+        preview_chunk = preview.get('chunk')
+        if preview_chunk is True:
+            preview['chunk'] = {
+                'minChars': 200,
+                'maxChars': 800,
+                'breakPreference': 'paragraph',
+            }
+            normalized['preview'] = preview
+            migrated = True
+        elif preview_chunk in (False, None):
+            preview.pop('chunk', None)
+            if preview:
+                normalized['preview'] = preview
+            else:
+                normalized.pop('preview', None)
+            if preview_chunk is False:
+                migrated = True
+
+    block = normalized.get('block')
+    if isinstance(block, dict):
+        block = dict(block)
+        coalesce = block.get('coalesce')
+        if coalesce is True:
+            block['coalesce'] = {
+                'idleMs': 1000,
+            }
+            normalized['block'] = block
+            migrated = True
+        elif coalesce in (False, None):
+            block.pop('coalesce', None)
+            if block:
+                normalized['block'] = block
+            else:
+                normalized.pop('block', None)
+            if coalesce is False:
+                migrated = True
+
+    if migrated:
+        print('检测到 Telegram streaming 子字段包含旧版值，正在修正为当前 schema...')
+        telegram['streaming'] = normalized
         print('✅ Telegram 配置已迁移到新版嵌套结构')
 
 
@@ -1741,13 +1792,19 @@ def apply_channel_rules(ctx):
                 'groupPolicy': ctx.env.get('TELEGRAM_GROUP_POLICY') or ctx.default_group_policy,
                 'streaming': {
                     'mode': 'partial',
-                    'chunkMode': 'default',
+                    'chunkMode': 'length',
                     'preview': {
-                        'chunk': True,
+                        'chunk': {
+                            'minChars': 200,
+                            'maxChars': 800,
+                            'breakPreference': 'paragraph',
+                        },
                     },
                     'block': {
                         'enabled': False,
-                        'coalesce': True,
+                        'coalesce': {
+                            'idleMs': 1000,
+                        },
                     },
                 },
             }),

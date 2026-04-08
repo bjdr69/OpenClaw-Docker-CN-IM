@@ -150,13 +150,19 @@
       "groupPolicy": "open",
       "streaming": {
         "mode": "partial",
-        "chunkMode": "default",
+        "chunkMode": "length",
         "preview": {
-          "chunk": true
+          "chunk": {
+            "minChars": 200,
+            "maxChars": 800,
+            "breakPreference": "paragraph"
+          }
         },
         "block": {
           "enabled": false,
-          "coalesce": true
+          "coalesce": {
+            "idleMs": 1000
+          }
         }
       }
     },
